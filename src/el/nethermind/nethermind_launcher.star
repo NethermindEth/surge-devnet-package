@@ -17,6 +17,10 @@ DISCOVERY_PORT_NUM = 30303
 ENGINE_RPC_PORT_NUM = 8551
 METRICS_PORT_NUM = 9001
 
+# The min/max CPU/memory that the execution node can use
+EXECUTION_MIN_CPU = 100
+EXECUTION_MIN_MEMORY = 512
+
 VERBOSITY_LEVELS = {
     constants.GLOBAL_LOG_LEVEL.error: "ERROR",
     constants.GLOBAL_LOG_LEVEL.warn: "WARN",
@@ -30,30 +34,70 @@ def launch(
     plan,
     launcher,
     service_name,
-    participant,
+    image,
+    participant_log_level,
     global_log_level,
     existing_el_clients,
+    el_min_cpu,
+    el_max_cpu,
+    el_min_mem,
+    el_max_mem,
+    extra_params,
+    extra_env_vars,
+    extra_labels,
     persistent,
+    el_volume_size,
     tolerations,
     node_selectors,
     port_publisher,
     participant_index,
 ):
     log_level = input_parser.get_client_log_level_or_default(
-        participant.el_log_level, global_log_level, VERBOSITY_LEVELS
+        participant_log_level, global_log_level, VERBOSITY_LEVELS
+    )
+
+    network_name = shared_utils.get_network_name(launcher.network)
+
+    el_min_cpu = int(el_min_cpu) if int(el_min_cpu) > 0 else EXECUTION_MIN_CPU
+    el_max_cpu = (
+        int(el_max_cpu)
+        if int(el_max_cpu) > 0
+        else constants.RAM_CPU_OVERRIDES[network_name]["nethermind_max_cpu"]
+    )
+    el_min_mem = int(el_min_mem) if int(el_min_mem) > 0 else EXECUTION_MIN_MEMORY
+    el_max_mem = (
+        int(el_max_mem)
+        if int(el_max_mem) > 0
+        else constants.RAM_CPU_OVERRIDES[network_name]["nethermind_max_mem"]
+    )
+
+    el_volume_size = (
+        el_volume_size
+        if int(el_volume_size) > 0
+        else constants.VOLUME_SIZE[network_name]["nethermind_volume_size"]
     )
 
     cl_client_name = service_name.split("-")[3]
 
     config = get_config(
         plan,
-        launcher,
-        participant,
+        launcher.el_cl_genesis_data,
+        launcher.jwt_file,
+        launcher.network,
+        image,
         service_name,
         existing_el_clients,
         cl_client_name,
         log_level,
+        el_min_cpu,
+        el_max_cpu,
+        el_min_mem,
+        el_max_mem,
+        extra_params,
+        extra_env_vars,
+        extra_labels,
         persistent,
+        el_volume_size,
         tolerations,
         node_selectors,
         port_publisher,
@@ -90,13 +134,23 @@ def launch(
 
 def get_config(
     plan,
-    launcher,
-    participant,
+    el_cl_genesis_data,
+    jwt_file,
+    network,
+    image,
     service_name,
     existing_el_clients,
     cl_client_name,
     log_level,
+    el_min_cpu,
+    el_max_cpu,
+    el_min_mem,
+    el_max_mem,
+    extra_params,
+    extra_env_vars,
+    extra_labels,
     persistent,
+    el_volume_size,
     tolerations,
     node_selectors,
     port_publisher,
@@ -135,7 +189,7 @@ def get_config(
         "--datadir=" + EXECUTION_DATA_DIRPATH_ON_CLIENT_CONTAINER,
         "--Init.WebSocketsEnabled=true",
         "--JsonRpc.Enabled=true",
-        "--JsonRpc.EnabledModules=net,eth,consensus,subscribe,web3,admin,debug,txpool",
+        "--JsonRpc.EnabledModules=net,eth,consensus,subscribe,web3,admin,debug,trace",
         "--JsonRpc.Host=0.0.0.0",
         "--JsonRpc.Port={0}".format(RPC_PORT_NUM),
         "--JsonRpc.WebSocketsPort={0}".format(WS_PORT_NUM),
@@ -148,29 +202,30 @@ def get_config(
         "--Metrics.Enabled=true",
         "--Metrics.ExposePort={0}".format(METRICS_PORT_NUM),
         "--Metrics.ExposeHost=0.0.0.0",
+        "--config=none",
     ]
 
-    if constants.NETWORK_NAME.shadowfork in launcher.network:
+    if constants.NETWORK_NAME.shadowfork in network:
         cmd.append(
             "--Init.ChainSpecPath="
             + constants.GENESIS_CONFIG_MOUNT_PATH_ON_CONTAINER
             + "/chainspec.json"
         )
-        cmd.append("--config=" + launcher.network.split("-")[0])
-        cmd.append("--Init.BaseDbPath=" + launcher.network.split("-")[0])
-    elif launcher.network not in constants.PUBLIC_NETWORKS:
-        cmd.append("--config=none")
+        # cmd.append("--config=" + network.split("-")[0])
+        cmd.append("--Init.BaseDbPath=" + network.split("-")[0])
+    elif network not in constants.PUBLIC_NETWORKS:
+        # cmd.append("--config=none.cfg")
         cmd.append(
             "--Init.ChainSpecPath="
             + constants.GENESIS_CONFIG_MOUNT_PATH_ON_CONTAINER
             + "/chainspec.json"
         )
-    else:
-        cmd.append("--config=" + launcher.network)
+    # else:
+    #     cmd.append("--config=" + network)
 
     if (
-        launcher.network == constants.NETWORK_NAME.kurtosis
-        or constants.NETWORK_NAME.shadowfork in launcher.network
+        network == constants.NETWORK_NAME.kurtosis
+        or constants.NETWORK_NAME.shadowfork in network
     ):
         if len(existing_el_clients) > 0:
             cmd.append(
@@ -183,65 +238,53 @@ def get_config(
                 )
             )
     elif (
-        launcher.network not in constants.PUBLIC_NETWORKS
-        and constants.NETWORK_NAME.shadowfork not in launcher.network
+        network not in constants.PUBLIC_NETWORKS
+        and constants.NETWORK_NAME.shadowfork not in network
     ):
         cmd.append(
             "--Discovery.Bootnodes="
             + shared_utils.get_devnet_enodes(
-                plan, launcher.el_cl_genesis_data.files_artifact_uuid
+                plan, el_cl_genesis_data.files_artifact_uuid
             )
         )
 
-    if len(participant.el_extra_params) > 0:
+    if len(extra_params) > 0:
         # this is a repeated<proto type>, we convert it into Starlark
-        cmd.extend([param for param in participant.el_extra_params])
+        cmd.extend([param for param in extra_params])
 
     files = {
-        constants.GENESIS_DATA_MOUNTPOINT_ON_CLIENTS: launcher.el_cl_genesis_data.files_artifact_uuid,
-        constants.JWT_MOUNTPOINT_ON_CLIENTS: launcher.jwt_file,
+        constants.GENESIS_DATA_MOUNTPOINT_ON_CLIENTS: el_cl_genesis_data.files_artifact_uuid,
+        constants.JWT_MOUNTPOINT_ON_CLIENTS: jwt_file,
     }
 
     if persistent:
         files[EXECUTION_DATA_DIRPATH_ON_CLIENT_CONTAINER] = Directory(
             persistent_key="data-{0}".format(service_name),
-            size=int(participant.el_volume_size)
-            if int(participant.el_volume_size) > 0
-            else constants.VOLUME_SIZE[launcher.network][
-                constants.EL_TYPE.nethermind + "_volume_size"
-            ],
+            size=el_volume_size,
         )
-    env_vars = participant.el_extra_env_vars
-    config_args = {
-        "image": participant.el_image,
-        "ports": used_ports,
-        "public_ports": public_ports,
-        "cmd": cmd,
-        "files": files,
-        "private_ip_address_placeholder": constants.PRIVATE_IP_ADDRESS_PLACEHOLDER,
-        "env_vars": env_vars,
-        "labels": shared_utils.label_maker(
-            client=constants.EL_TYPE.nethermind,
-            client_type=constants.CLIENT_TYPES.el,
-            image=participant.el_image[-constants.MAX_LABEL_LENGTH :],
-            connected_client=cl_client_name,
-            extra_labels=participant.el_extra_labels,
-            supernode=participant.supernode,
+
+    return ServiceConfig(
+        image=image,
+        ports=used_ports,
+        public_ports=public_ports,
+        cmd=cmd,
+        files=files,
+        private_ip_address_placeholder=constants.PRIVATE_IP_ADDRESS_PLACEHOLDER,
+        min_cpu=el_min_cpu,
+        max_cpu=el_max_cpu,
+        min_memory=el_min_mem,
+        max_memory=el_max_mem,
+        env_vars=extra_env_vars,
+        labels=shared_utils.label_maker(
+            constants.EL_TYPE.nethermind,
+            constants.CLIENT_TYPES.el,
+            image,
+            cl_client_name,
+            extra_labels,
         ),
-        "tolerations": tolerations,
-        "node_selectors": node_selectors,
-    }
-
-    if participant.el_min_cpu > 0:
-        config_args["min_cpu"] = participant.el_min_cpu
-    if participant.el_max_cpu > 0:
-        config_args["max_cpu"] = participant.el_max_cpu
-    if participant.el_min_mem > 0:
-        config_args["min_memory"] = participant.el_min_mem
-    if participant.el_max_mem > 0:
-        config_args["max_memory"] = participant.el_max_mem
-    return ServiceConfig(**config_args)
-
+        tolerations=tolerations,
+        node_selectors=node_selectors,
+    )
 
 def new_nethermind_launcher(el_cl_genesis_data, jwt_file, network):
     return struct(

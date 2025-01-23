@@ -11,7 +11,6 @@ APACHE_ENR_LIST_FILENAME = "bootstrap_nodes.txt"
 
 APACHE_CONFIG_MOUNT_DIRPATH_ON_SERVICE = "/usr/local/apache2/htdocs/"
 
-IMAGE_NAME = "library/httpd:latest"
 # The min/max CPU/memory that assertoor can use
 MIN_CPU = 100
 MAX_CPU = 300
@@ -34,7 +33,6 @@ def launch_apache(
     participant_contexts,
     participant_configs,
     global_node_selectors,
-    docker_cache_params,
 ):
     config_files_artifact_name = plan.upload_files(
         src=static_files.APACHE_CONFIG_FILEPATH, name="apache-config"
@@ -95,7 +93,6 @@ def launch_apache(
         public_ports,
         bootstrap_info_files_artifact_name,
         global_node_selectors,
-        docker_cache_params,
     )
 
     plan.add_service(SERVICE_NAME, config)
@@ -107,7 +104,6 @@ def get_config(
     public_ports,
     bootstrap_info_files_artifact_name,
     node_selectors,
-    docker_cache_params,
 ):
     files = {
         constants.GENESIS_DATA_MOUNTPOINT_ON_CLIENTS: el_cl_genesis_data,
@@ -149,10 +145,7 @@ def get_config(
     cmd_str = " ".join(cmd)
 
     return ServiceConfig(
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params,
-            IMAGE_NAME,
-        ),
+        image="httpd:latest",
         ports=USED_PORTS,
         cmd=[cmd_str],
         public_ports=public_ports,

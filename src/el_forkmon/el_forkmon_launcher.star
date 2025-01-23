@@ -32,7 +32,6 @@ def launch_el_forkmon(
     global_node_selectors,
     port_publisher,
     additional_service_index,
-    docker_cache_params,
 ):
     all_el_client_info = []
     for client in el_contexts:
@@ -60,7 +59,6 @@ def launch_el_forkmon(
         global_node_selectors,
         port_publisher,
         additional_service_index,
-        docker_cache_params,
     )
 
     plan.add_service(SERVICE_NAME, config)
@@ -71,7 +69,6 @@ def get_config(
     node_selectors,
     port_publisher,
     additional_service_index,
-    docker_cache_params,
 ):
     config_file_path = shared_utils.path_join(
         EL_FORKMON_CONFIG_MOUNT_DIRPATH_ON_SERVICE, EL_FORKMON_CONFIG_FILENAME
@@ -85,10 +82,7 @@ def get_config(
     )
 
     return ServiceConfig(
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params,
-            IMAGE_NAME,
-        ),
+        image=IMAGE_NAME,
         ports=USED_PORTS,
         public_ports=public_ports,
         files={

@@ -3,6 +3,8 @@ static_files = import_module("../static_files/static_files.star")
 
 SERVICE_NAME = "grafana"
 
+IMAGE_NAME = "grafana/grafana:latest-ubuntu"
+
 HTTP_PORT_ID = "http"
 HTTP_PORT_NUMBER_UINT16 = 3000
 
@@ -36,6 +38,12 @@ USED_PORTS = {
     )
 }
 
+# The min/max CPU/memory that grafana can use
+MIN_CPU = 10
+MAX_CPU = 1000
+MIN_MEMORY = 128
+MAX_MEMORY = 2048
+
 
 def launch_grafana(
     plan,
@@ -43,7 +51,7 @@ def launch_grafana(
     dashboard_providers_config_template,
     prometheus_private_url,
     global_node_selectors,
-    grafana_params,
+    additional_dashboards=[],
 ):
     (
         grafana_config_artifacts_uuid,
@@ -54,7 +62,7 @@ def launch_grafana(
         datasource_config_template,
         dashboard_providers_config_template,
         prometheus_private_url,
-        additional_dashboards=grafana_params.additional_dashboards,
+        additional_dashboards=additional_dashboards,
     )
 
     merged_dashboards_artifact_name = merge_dashboards_artifacts(
@@ -67,7 +75,6 @@ def launch_grafana(
         grafana_config_artifacts_uuid,
         merged_dashboards_artifact_name,
         global_node_selectors,
-        grafana_params,
     )
 
     plan.add_service(SERVICE_NAME, config)
@@ -123,10 +130,9 @@ def get_config(
     grafana_config_artifacts_name,
     grafana_dashboards_artifacts_name,
     node_selectors,
-    grafana_params,
 ):
     return ServiceConfig(
-        image=grafana_params.image,
+        image=IMAGE_NAME,
         ports=USED_PORTS,
         env_vars={
             CONFIG_DIRPATH_ENV_VAR: GRAFANA_CONFIG_DIRPATH_ON_SERVICE,
@@ -139,10 +145,10 @@ def get_config(
             GRAFANA_CONFIG_DIRPATH_ON_SERVICE: grafana_config_artifacts_name,
             GRAFANA_DASHBOARDS_DIRPATH_ON_SERVICE: grafana_dashboards_artifacts_name,
         },
-        min_cpu=grafana_params.min_cpu,
-        max_cpu=grafana_params.max_cpu,
-        min_memory=grafana_params.min_mem,
-        max_memory=grafana_params.max_mem,
+        min_cpu=MIN_CPU,
+        max_cpu=MAX_CPU,
+        min_memory=MIN_MEMORY,
+        max_memory=MAX_MEMORY,
         node_selectors=node_selectors,
     )
 

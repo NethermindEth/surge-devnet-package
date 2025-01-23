@@ -1,4 +1,3 @@
-shared_utils = import_module("../../../shared_utils/shared_utils.star")
 PYTHON_IMAGE = "ethpandaops/python-web3"
 CUSTOM_FLOOD_SERVICE_NAME = "mev-custom-flood"
 
@@ -16,16 +15,13 @@ def spam_in_background(
     el_uri,
     params,
     global_node_selectors,
-    docker_cache_params,
 ):
     sender_script = plan.upload_files(src="./sender.py", name="mev-custom-flood-sender")
 
     plan.add_service(
         name=CUSTOM_FLOOD_SERVICE_NAME,
         config=ServiceConfig(
-            image=shared_utils.docker_cache_image_calc(
-                docker_cache_params, PYTHON_IMAGE
-            ),
+            image=PYTHON_IMAGE,
             files={"/tmp": sender_script},
             cmd=["/bin/sh", "-c", "touch /tmp/sender.log && tail -f /tmp/sender.log"],
             env_vars={

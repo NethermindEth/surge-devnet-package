@@ -15,7 +15,7 @@ transaction_spammer = import_module(
     "./src/transaction_spammer/transaction_spammer.star"
 )
 blob_spammer = import_module("./src/blob_spammer/blob_spammer.star")
-spamoor_blob = import_module("./src/spamoor_blob/spamoor_blob.star")
+goomy_blob = import_module("./src/goomy_blob/goomy_blob.star")
 el_forkmon = import_module("./src/el_forkmon/el_forkmon_launcher.star")
 beacon_metrics_gazer = import_module(
     "./src/beacon_metrics_gazer/beacon_metrics_gazer_launcher.star"
@@ -33,18 +33,11 @@ full_beaconchain_explorer = import_module(
 blockscout = import_module("./src/blockscout/blockscout_launcher.star")
 prometheus = import_module("./src/prometheus/prometheus_launcher.star")
 grafana = import_module("./src/grafana/grafana_launcher.star")
-commit_boost_mev_boost = import_module(
-    "./src/mev/commit-boost/mev_boost/mev_boost_launcher.star"
-)
 mev_rs_mev_boost = import_module("./src/mev/mev-rs/mev_boost/mev_boost_launcher.star")
 mev_rs_mev_relay = import_module("./src/mev/mev-rs/mev_relay/mev_relay_launcher.star")
 mev_rs_mev_builder = import_module(
     "./src/mev/mev-rs/mev_builder/mev_builder_launcher.star"
 )
-flashbots_mev_rbuilder = import_module(
-    "./src/mev/flashbots/mev_builder/mev_builder_launcher.star"
-)
-
 flashbots_mev_boost = import_module(
     "./src/mev/flashbots/mev_boost/mev_boost_launcher.star"
 )
@@ -61,7 +54,15 @@ assertoor = import_module("./src/assertoor/assertoor_launcher.star")
 get_prefunded_accounts = import_module(
     "./src/prefunded_accounts/get_prefunded_accounts.star"
 )
-spamoor = import_module("./src/spamoor/spamoor.star")
+
+# Taiko
+taiko_protocol = import_module("./src/contracts/taiko-protocol.star")
+
+# Preconf AVS
+l2_taiko = import_module("./src/l2_taiko/taiko_launcher.star")
+taiko_blockscout = import_module("./src/l2_taiko/blockscout_launcher.star")
+preconf_avs = import_module("./src/preconf_avs/avs_launcher.star")
+p2p_bootnode = import_module("./src/preconf_avs/p2pbootnode_launcher.star")
 
 GRAFANA_USER = "admin"
 GRAFANA_PASSWORD = "admin"
@@ -86,6 +87,8 @@ def run(plan, args={}):
     num_participants = len(args_with_right_defaults.participants)
     network_params = args_with_right_defaults.network_params
     mev_params = args_with_right_defaults.mev_params
+    taiko_params = args_with_right_defaults.taiko_params
+    preconf_params = args_with_right_defaults.preconf_params
     parallel_keystore_generation = args_with_right_defaults.parallel_keystore_generation
     persistent = args_with_right_defaults.persistent
     xatu_sentry_params = args_with_right_defaults.xatu_sentry_params
@@ -93,7 +96,6 @@ def run(plan, args={}):
     global_node_selectors = args_with_right_defaults.global_node_selectors
     keymanager_enabled = args_with_right_defaults.keymanager_enabled
     apache_port = args_with_right_defaults.apache_port
-    docker_cache_params = args_with_right_defaults.docker_cache_params
 
     prefunded_accounts = genesis_constants.PRE_FUNDED_ACCOUNTS
     if (
@@ -125,7 +127,7 @@ def run(plan, args={}):
 
     if args_with_right_defaults.mev_type == constants.MEV_RS_MEV_TYPE:
         plan.print("Generating mev-rs builder config file")
-        mev_rs_builder_config_file = mev_rs_mev_builder.new_builder_config(
+        mev_rs__builder_config_file = mev_rs_mev_builder.new_builder_config(
             plan,
             constants.MEV_RS_MEV_TYPE,
             network_params.network,
@@ -134,27 +136,13 @@ def run(plan, args={}):
             args_with_right_defaults.mev_params.mev_builder_extra_data,
             global_node_selectors,
         )
-    elif (
-        args_with_right_defaults.mev_type == constants.FLASHBOTS_MEV_TYPE
-        or args_with_right_defaults.mev_type == constants.COMMIT_BOOST_MEV_TYPE
-    ):
-        plan.print("Generating flashbots builder config file")
-        flashbots_builder_config_file = flashbots_mev_rbuilder.new_builder_config(
-            plan,
-            constants.FLASHBOTS_MEV_TYPE,
-            network_params,
-            constants.VALIDATING_REWARDS_ACCOUNT,
-            network_params.preregistered_validator_keys_mnemonic,
-            args_with_right_defaults.mev_params.mev_builder_extra_data,
-            enumerate(args_with_right_defaults.participants),
-            global_node_selectors,
-        )
 
     plan.print(
         "Launching participant network with {0} participants and the following network params {1}".format(
             num_participants, network_params
         )
     )
+
     (
         all_participants,
         final_genesis_timestamp,
@@ -163,8 +151,9 @@ def run(plan, args={}):
         network_id,
     ) = participant_network.launch_participant_network(
         plan,
-        args_with_right_defaults,
+        args_with_right_defaults.participants,
         network_params,
+        args_with_right_defaults.global_log_level,
         jwt_file,
         keymanager_file,
         persistent,
@@ -173,6 +162,9 @@ def run(plan, args={}):
         global_node_selectors,
         keymanager_enabled,
         parallel_keystore_generation,
+        args_with_right_defaults.checkpoint_sync_enabled,
+        args_with_right_defaults.checkpoint_sync_url,
+        args_with_right_defaults.port_publisher,
     )
 
     plan.print(
@@ -185,14 +177,12 @@ def run(plan, args={}):
     all_el_contexts = []
     all_cl_contexts = []
     all_vc_contexts = []
-    all_remote_signer_contexts = []
     all_ethereum_metrics_exporter_contexts = []
     all_xatu_sentry_contexts = []
     for participant in all_participants:
         all_el_contexts.append(participant.el_context)
         all_cl_contexts.append(participant.cl_context)
         all_vc_contexts.append(participant.vc_context)
-        all_remote_signer_contexts.append(participant.remote_signer_context)
         all_ethereum_metrics_exporter_contexts.append(
             participant.ethereum_metrics_exporter_context
         )
@@ -214,6 +204,22 @@ def run(plan, args={}):
         all_el_contexts[0].rpc_port_num,
     )
 
+    # Deploy all smart contracts
+    plan.run_sh(
+        run = "sleep 60",
+        description = "Waiting for L1 to sync",
+    )
+
+    if "taiko" in args_with_right_defaults.additional_services:
+        taiko_params = args_with_right_defaults.taiko_params
+        taiko_protocol.deploy(
+            plan,
+            taiko_params,
+            prefunded_accounts, # L1 Prefunded Accounts
+            final_genesis_timestamp, # L1 Genesis Timestamp
+            all_el_contexts[0].rpc_http_url, # L1 RPC URL
+        )
+
     # Broadcaster forwards requests, sent to it, to all nodes in parallel
     if "broadcaster" in args_with_right_defaults.additional_services:
         args_with_right_defaults.additional_services.remove("broadcaster")
@@ -226,7 +232,6 @@ def run(plan, args={}):
             broadcaster_service.ip_address,
             broadcaster.PORT,
         )
-
     mev_endpoints = []
     mev_endpoint_names = []
     # passed external relays get priority
@@ -254,19 +259,17 @@ def run(plan, args={}):
             plan,
             el_uri,
             beacon_uri,
-            jwt_file,
+            raw_jwt_secret,
             args_with_right_defaults.global_log_level,
             global_node_selectors,
-            args_with_right_defaults.mev_params,
         )
         mev_endpoints.append(endpoint)
         mev_endpoint_names.append(constants.MOCK_MEV_TYPE)
     elif args_with_right_defaults.mev_type and (
         args_with_right_defaults.mev_type == constants.FLASHBOTS_MEV_TYPE
         or args_with_right_defaults.mev_type == constants.MEV_RS_MEV_TYPE
-        or args_with_right_defaults.mev_type == constants.COMMIT_BOOST_MEV_TYPE
     ):
-        blocksim_uri = "http://{0}:{1}".format(
+        builder_uri = "http://{0}:{1}".format(
             all_el_contexts[-1].ip_addr, all_el_contexts[-1].rpc_port_num
         )
         beacon_uri = all_cl_contexts[-1].beacon_http_url
@@ -298,17 +301,14 @@ def run(plan, args={}):
             timeout="20m",
             service_name=first_client_beacon_name,
         )
-        if (
-            args_with_right_defaults.mev_type == constants.FLASHBOTS_MEV_TYPE
-            or args_with_right_defaults.mev_type == constants.COMMIT_BOOST_MEV_TYPE
-        ):
+        if args_with_right_defaults.mev_type == constants.FLASHBOTS_MEV_TYPE:
             endpoint = flashbots_mev_relay.launch_mev_relay(
                 plan,
                 mev_params,
                 network_id,
                 beacon_uris,
                 genesis_validators_root,
-                blocksim_uri,
+                builder_uri,
                 network_params.seconds_per_slot,
                 persistent,
                 global_node_selectors,
@@ -325,14 +325,25 @@ def run(plan, args={}):
         else:
             fail("Invalid MEV type")
 
-        mev_flood.spam_in_background(
-            plan,
-            fuzz_target,
-            mev_params.mev_flood_extra_args,
-            mev_params.mev_flood_seconds_per_bundle,
-            contract_owner.private_key,
-            normal_user.private_key,
+        # Restart MEV builder
+        plan.stop_service(
+            name = all_el_contexts[-1].service_name,
+            description = "Stopping builder service",
         )
+
+        plan.start_service(
+            name = all_el_contexts[-1].service_name,
+            description = "Starting builder service",
+        )
+
+        # mev_flood.spam_in_background(
+        #     plan,
+        #     fuzz_target,
+        #     mev_params.mev_flood_extra_args,
+        #     mev_params.mev_flood_seconds_per_bundle,
+        #     contract_owner.private_key,
+        #     normal_user.private_key,
+        # )
         mev_endpoints.append(endpoint)
         mev_endpoint_names.append(args_with_right_defaults.mev_type)
 
@@ -367,7 +378,7 @@ def run(plan, args={}):
                         plan,
                         mev_boost_launcher,
                         mev_boost_service_name,
-                        final_genesis_timestamp,
+                        network_id,
                         mev_params.mev_boost_image,
                         mev_params.mev_boost_args,
                         global_node_selectors,
@@ -385,30 +396,6 @@ def run(plan, args={}):
                         participant.el_type,
                     )
                     mev_boost_context = mev_rs_mev_boost.launch(
-                        plan,
-                        mev_boost_launcher,
-                        mev_boost_service_name,
-                        network_params.network,
-                        mev_params,
-                        mev_endpoints,
-                        el_cl_data_files_artifact_uuid,
-                        global_node_selectors,
-                    )
-                elif (
-                    args_with_right_defaults.mev_type == constants.COMMIT_BOOST_MEV_TYPE
-                ):
-                    plan.print("Launching commit-boost PBS service")
-                    mev_boost_launcher = commit_boost_mev_boost.new_mev_boost_launcher(
-                        MEV_BOOST_SHOULD_CHECK_RELAY,
-                        mev_endpoints,
-                    )
-                    mev_boost_service_name = "{0}-{1}-{2}-{3}".format(
-                        input_parser.MEV_BOOST_SERVICE_NAME_PREFIX,
-                        index_str,
-                        participant.cl_type,
-                        participant.el_type,
-                    )
-                    mev_boost_context = commit_boost_mev_boost.launch(
                         plan,
                         mev_boost_launcher,
                         mev_boost_service_name,
@@ -446,6 +433,7 @@ def run(plan, args={}):
                 prefunded_accounts,
                 fuzz_target,
                 tx_spammer_params,
+                network_params.electra_fork_epoch,
                 global_node_selectors,
             )
             plan.print("Successfully launched transaction spammer")
@@ -460,9 +448,21 @@ def run(plan, args={}):
                 network_params.seconds_per_slot,
                 network_params.genesis_delay,
                 global_node_selectors,
-                args_with_right_defaults.tx_spammer_params,
             )
             plan.print("Successfully launched blob spammer")
+        elif additional_service == "goomy_blob":
+            plan.print("Launching Goomy the blob spammer")
+            goomy_blob_params = args_with_right_defaults.goomy_blob_params
+            goomy_blob.launch_goomy_blob(
+                plan,
+                prefunded_accounts,
+                all_el_contexts,
+                all_cl_contexts[0],
+                network_params.seconds_per_slot,
+                goomy_blob_params,
+                global_node_selectors,
+            )
+            plan.print("Successfully launched goomy the blob spammer")
         # We need a way to do time.sleep
         # TODO add code that waits for CL genesis
         elif additional_service == "el_forkmon":
@@ -477,7 +477,6 @@ def run(plan, args={}):
                 global_node_selectors,
                 args_with_right_defaults.port_publisher,
                 index,
-                args_with_right_defaults.docker_cache_params,
             )
             plan.print("Successfully launched execution layer forkmon")
         elif additional_service == "beacon_metrics_gazer":
@@ -490,7 +489,6 @@ def run(plan, args={}):
                     global_node_selectors,
                     args_with_right_defaults.port_publisher,
                     index,
-                    args_with_right_defaults.docker_cache_params,
                 )
             )
             launch_prometheus_grafana = True
@@ -507,9 +505,6 @@ def run(plan, args={}):
                 global_node_selectors,
                 args_with_right_defaults.port_publisher,
                 index,
-                args_with_right_defaults.docker_cache_params,
-                args_with_right_defaults.blockscout_params,
-                network_params,
             )
             plan.print("Successfully launched blockscout")
         elif additional_service == "dora":
@@ -544,7 +539,6 @@ def run(plan, args={}):
                 global_node_selectors,
                 args_with_right_defaults.port_publisher,
                 index,
-                args_with_right_defaults.docker_cache_params,
             )
             plan.print("Successfully launched dugtrio")
         elif additional_service == "blutgang":
@@ -561,7 +555,6 @@ def run(plan, args={}):
                 global_node_selectors,
                 args_with_right_defaults.port_publisher,
                 index,
-                args_with_right_defaults.docker_cache_params,
             )
             plan.print("Successfully launched blutgang")
         elif additional_service == "blobscan":
@@ -576,7 +569,6 @@ def run(plan, args={}):
                 global_node_selectors,
                 args_with_right_defaults.port_publisher,
                 index,
-                args_with_right_defaults.docker_cache_params,
             )
             plan.print("Successfully launched blobscan")
         elif additional_service == "forky":
@@ -595,7 +587,6 @@ def run(plan, args={}):
                 final_genesis_timestamp,
                 args_with_right_defaults.port_publisher,
                 index,
-                args_with_right_defaults.docker_cache_params,
             )
             plan.print("Successfully launched forky")
         elif additional_service == "tracoor":
@@ -614,7 +605,6 @@ def run(plan, args={}):
                 final_genesis_timestamp,
                 args_with_right_defaults.port_publisher,
                 index,
-                args_with_right_defaults.docker_cache_params,
             )
             plan.print("Successfully launched tracoor")
         elif additional_service == "apache":
@@ -626,7 +616,6 @@ def run(plan, args={}):
                 all_participants,
                 args_with_right_defaults.participants,
                 global_node_selectors,
-                args_with_right_defaults.docker_cache_params,
             )
             plan.print("Successfully launched apache")
         elif additional_service == "full_beaconchain_explorer":
@@ -673,26 +662,167 @@ def run(plan, args={}):
                 fuzz_target,
                 args_with_right_defaults.custom_flood_params,
                 global_node_selectors,
-                args_with_right_defaults.docker_cache_params,
             )
-        elif additional_service == "spamoor":
-            plan.print("Launching spamoor")
-            spamoor.launch_spamoor(
+        elif additional_service == "taiko":
+
+            plan.print("Preparing taiko")
+            taiko_params = args_with_right_defaults.taiko_params
+            plan.print("Taiko Params: {0}".format(taiko_params))
+
+        elif additional_service == "taiko_stack":
+
+            plan.print("Launching taiko")
+            # plan.upload_files(
+            #     src="./taiko-geth",
+            #     name="taiko_genesis",
+            # )
+
+            l2_jwt = plan.upload_files(
+                src=static_files.L2_JWT_PATH,
+                name="l2_jwt_files",
+            )
+
+            taiko_files = plan.upload_files(
+                src=static_files.TAIKO_PATH,
+                name="taiko_files",
+            )
+
+            # Launch taiko stack 1
+            taiko_stack_1 = l2_taiko.launch(
                 plan,
+                all_el_contexts[0],
+                all_cl_contexts[0],
                 prefunded_accounts,
-                all_el_contexts,
-                args_with_right_defaults.spamoor_params,
-                global_node_selectors,
+                "",
+                0,
             )
-        elif additional_service == "spamoor_blob":
-            plan.print("Launching spamoor as blob spammer")
-            spamoor_blob.launch_spamoor_blob(
+
+            # Launch taiko stack 2
+            taiko_stack_2 = l2_taiko.launch(
                 plan,
+                all_el_contexts[0],
+                all_cl_contexts[0],
                 prefunded_accounts,
-                all_el_contexts,
-                args_with_right_defaults.spamoor_blob_params,
-                global_node_selectors,
+                taiko_stack_1.enode,
+                1,
             )
+
+            plan.print("Successfully launched 2 taiko stacks")
+
+            # Launch blockscout for taiko L2
+            taiko_blockscout.launch_blockscout(
+                plan,
+                taiko_stack_1,
+                persistent,
+                global_node_selectors,
+                args_with_right_defaults.port_publisher,
+                index,
+            )
+
+            plan.print("Successfully launched blockscout for taiko L2")
+
+            # Launch taiko L2 tx transfer for first transaction
+            # plan.add_service(
+            #     name = "taiko-tx-transfer",
+            #     description = "Preparing to transfer Taiko ETH",
+            #     config = ServiceConfig(
+            #         image = "nethswitchboard/taiko-spammer:e2e",
+            #         cmd = [
+            #             "sleep",
+            #             "infinity",
+            #         ],
+            #         env_vars = {
+            #             "PRIVATE_KEY": "370e47f3c39cf4d03cb87cb71a268776421cdc22c39aa81f1e5ba19df19202f1",
+            #             "RECIPIENT_ADDRESS": "0xf93Ee4Cf8c6c40b329b0c0626F28333c132CF241",
+            #             "TX_COUNT": "1",
+            #             "TX_AMOUNT": "100",
+            #             "RPC_URL": taiko_stack_1.rpc_http_url,
+            #             "DELAY": "3",
+            #         },
+            #     ),
+            # )
+
+            # Launch taiko L2 tx spammer
+            # plan.add_service(
+            #     name = "taiko-tx-spammer",
+            #     description = "Launching Taiko L2 tx spammer",
+            #     config = ServiceConfig(
+            #         image = "nethswitchboard/taiko-spammer:e2e",
+            #         cmd = [
+            #             "sleep",
+            #             "infinity",
+            #         ],
+            #         env_vars = {
+            #             "PRIVATE_KEY": "ab63b23eb7941c1251757e24b3d2350d2bc05c3c388d06f8fe6feafefb1e8c70",
+            #             "RECIPIENT_ADDRESS": "0x802dCbE1B1A97554B4F50DB5119E37E8e7336417",
+            #             "TX_COUNT": "10",
+            #             "TX_AMOUNT": "0.005",
+            #             "RPC_URL": taiko_stack_1.rpc_http_url,
+            #             "DELAY": "3",
+            #         },
+            #     ),
+            # )
+
+            # plan.print(spammer_result)
+        elif additional_service == "preconf_avs":
+            plan.print("Launching preconfirmation AVS")
+
+            # Launch P2P Bootnode
+            p2pbootnode_context = p2p_bootnode.launch(
+                plan,
+            )
+
+            # Launch Preconf AVS 1
+            preconf_avs.launch(
+                plan,
+                network_id,
+                all_el_contexts[0],
+                all_cl_contexts[0],
+                p2pbootnode_context,
+                taiko_stack_1,
+                all_mevboost_contexts[0],
+                prefunded_accounts,
+                "3219c83a76e82682c3e706902ca85777e703a06c9f0a82a5dfa6164f527c1ea6",
+                1,
+                # "215768a626159445ba0d8a1afab729c5724e75aa020a480580cbf86dd2ae4d47",
+                # 2,
+                1,
+            )
+
+            # Launch Preconf AVS 2
+            preconf_avs.launch(
+                plan,
+                network_id,
+                all_el_contexts[0],
+                all_cl_contexts[0],
+                p2pbootnode_context,
+                taiko_stack_2,
+                all_mevboost_contexts[0],
+                prefunded_accounts,
+                "0dce41fa73ae9f6bdfd51df4d422d75eee174553dba5fd450c4437e4ed3fc903",
+                0,
+                # "10c3db5c5bdca44958bc765e040a5cae3439551cfb4651df442cbe499b12ee69",
+                # 3,
+                2,
+            )
+
+            plan.print("Successfully launched 2 preconf avs")
+
+            plan.exec(
+                service_name = "taiko-tx-transfer",
+                description = "Pausing for 2 mins and transfering Taiko ETH",
+                recipe = ExecRecipe(
+                    command = [
+                        "sh",
+                        "-c",
+                        "sleep 120 && python tx_spammer.py --count $TX_COUNT --amount $TX_AMOUNT --rpc $RPC_URL | grep 'Transaction sent:' | awk '{print \"{\\\"transaction_hash\\\": \\\"\" $3 \"\\\"}\"}'",
+                    ],
+                    extract = {
+                        "tx_transfer_status": "fromjson | .transaction_hash",
+                    },
+                ),
+            )
+
         else:
             fail("Invalid additional service %s" % (additional_service))
     if launch_prometheus_grafana:
@@ -702,12 +832,12 @@ def run(plan, args={}):
             all_el_contexts,
             all_cl_contexts,
             all_vc_contexts,
-            all_remote_signer_contexts,
             prometheus_additional_metrics_jobs,
             all_ethereum_metrics_exporter_contexts,
             all_xatu_sentry_contexts,
             global_node_selectors,
-            args_with_right_defaults.prometheus_params,
+            args_with_right_defaults.prometheus_params.storage_tsdb_retention_time,
+            args_with_right_defaults.prometheus_params.storage_tsdb_retention_size,
         )
 
         plan.print("Launching grafana...")
@@ -717,7 +847,7 @@ def run(plan, args={}):
             grafana_dashboards_config_template,
             prometheus_private_url,
             global_node_selectors,
-            args_with_right_defaults.grafana_params,
+            additional_dashboards=args_with_right_defaults.grafana_additional_dashboards,
         )
         plan.print("Successfully launched grafana")
 

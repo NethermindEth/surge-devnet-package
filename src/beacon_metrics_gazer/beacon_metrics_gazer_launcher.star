@@ -37,14 +37,12 @@ def launch_beacon_metrics_gazer(
     global_node_selectors,
     port_publisher,
     additional_service_index,
-    docker_cache_params,
 ):
     config = get_config(
         cl_contexts[0].beacon_http_url,
         global_node_selectors,
         port_publisher,
         additional_service_index,
-        docker_cache_params,
     )
 
     beacon_metrics_gazer_service = plan.add_service(SERVICE_NAME, config)
@@ -66,7 +64,6 @@ def get_config(
     node_selectors,
     port_publisher,
     additional_service_index,
-    docker_cache_params,
 ):
     config_file_path = shared_utils.path_join(
         BEACON_METRICS_GAZER_CONFIG_MOUNT_DIRPATH_ON_SERVICE,
@@ -81,10 +78,7 @@ def get_config(
     )
 
     return ServiceConfig(
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params,
-            IMAGE_NAME,
-        ),
+        image=IMAGE_NAME,
         ports=USED_PORTS,
         public_ports=public_ports,
         files={

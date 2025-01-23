@@ -23,9 +23,6 @@ port_publisher:
   vc:
     enabled: true
     public_port_start: 34000
-  remote_signer:
-    enabled: true
-    public_port_start: 35000
   additional_services:
     enabled: true
-    public_port_start: 36000
+    public_port_start: 35000

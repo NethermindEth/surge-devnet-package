@@ -22,15 +22,10 @@ MIN_MEMORY = 10
 MAX_MEMORY = 600
 
 
-def launch(plan, service_name, el_context, node_selectors, docker_cache_params):
+def launch(plan, service_name, el_context, node_selectors):
     snooper_service_name = "{0}".format(service_name)
 
-    snooper_config = get_config(
-        service_name,
-        el_context,
-        node_selectors,
-        docker_cache_params,
-    )
+    snooper_config = get_config(service_name, el_context, node_selectors)
 
     snooper_service = plan.add_service(snooper_service_name, snooper_config)
     snooper_http_port = snooper_service.ports[SNOOPER_ENGINE_RPC_PORT_ID]
@@ -39,7 +34,7 @@ def launch(plan, service_name, el_context, node_selectors, docker_cache_params):
     )
 
 
-def get_config(service_name, el_context, node_selectors, docker_cache_params):
+def get_config(service_name, el_context, node_selectors):
     engine_rpc_port_num = "http://{0}:{1}".format(
         el_context.ip_addr,
         el_context.engine_rpc_port_num,
@@ -52,9 +47,7 @@ def get_config(service_name, el_context, node_selectors, docker_cache_params):
     ]
 
     return ServiceConfig(
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params, constants.DEFAULT_SNOOPER_IMAGE
-        ),
+        image=constants.DEFAULT_SNOOPER_IMAGE,
         ports=SNOOPER_USED_PORTS,
         cmd=cmd,
         min_cpu=MIN_CPU,

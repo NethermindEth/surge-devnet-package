@@ -1,10 +1,9 @@
-id: eoa-transactions-test
 name: "Transaction Test"
 timeout: 1h
 config:
-  walletPrivkey: ""
-  validatorPairNames: []
-  clientPairNames: []
+  #walletPrivkey: ""
+  #validatorPairNames: []
+  #clientPairNames: []
 tasks:
 - name: check_clients_are_healthy
   title: "Check if at least one client is ready"
@@ -21,8 +20,8 @@ tasks:
       name: generate_eoa_transactions
       title: "Generate 10 EOA transaction per block"
       config:
-        childWallets: 100
-        limitPending: 100
+        childWallets: 10
+        limitPending: 10
         limitPerBlock: 10
         randomTarget: true
         amount: 1000000
@@ -73,8 +72,8 @@ tasks:
               name: generate_eoa_transactions
               title: "Generate 10 EOA transaction per block and send via ${clientPairName}"
               config:
-                childWallets: 100
-                limitPending: 100
+                childWallets: 10
+                limitPending: 10
                 limitPerBlock: 10
                 randomTarget: true
                 amount: 1000000
@@ -103,8 +102,8 @@ tasks:
       name: generate_eoa_transactions
       title: "Generate 10 EOA transaction per block"
       config:
-        childWallets: 100
-        limitPending: 100
+        childWallets: 10
+        limitPending: 10
         limitPerBlock: 10
         randomTarget: true
         amount: 1000000
@@ -154,8 +153,8 @@ tasks:
               name: generate_eoa_transactions
               title: "Generate 10 EOA transaction per block and send via ${clientPairName}"
               config:
-                childWallets: 100
-                limitPending: 100
+                childWallets: 10
+                limitPending: 10
                 limitPerBlock: 10
                 randomTarget: true
                 amount: 1000000

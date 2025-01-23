@@ -2,13 +2,14 @@ shared_utils = import_module("../shared_utils/shared_utils.star")
 constants = import_module("../package_io/constants.star")
 postgres = import_module("github.com/kurtosis-tech/postgres-package/main.star")
 
-POSTGRES_IMAGE = "library/postgres:alpine"
+IMAGE_NAME_BLOCKSCOUT = "blockscout/blockscout:6.6.0"
+IMAGE_NAME_BLOCKSCOUT_VERIF = "ghcr.io/blockscout/smart-contract-verifier:v1.6.0"
 
 SERVICE_NAME_BLOCKSCOUT = "blockscout"
-SERVICE_NAME_FRONTEND = "blockscout-frontend"
+
 HTTP_PORT_NUMBER = 4000
 HTTP_PORT_NUMBER_VERIF = 8050
-HTTP_PORT_NUMBER_FRONTEND = 3000
+
 BLOCKSCOUT_MIN_CPU = 100
 BLOCKSCOUT_MAX_CPU = 1000
 BLOCKSCOUT_MIN_MEMORY = 1024
@@ -35,14 +36,6 @@ VERIF_USED_PORTS = {
     )
 }
 
-FRONTEND_USED_PORTS = {
-    constants.HTTP_PORT_ID: shared_utils.new_port_spec(
-        HTTP_PORT_NUMBER_FRONTEND,
-        shared_utils.TCP_PROTOCOL,
-        shared_utils.HTTP_APPLICATION_PROTOCOL,
-    )
-}
-
 
 def launch_blockscout(
     plan,
@@ -51,9 +44,6 @@ def launch_blockscout(
     global_node_selectors,
     port_publisher,
     additional_service_index,
-    docker_cache_params,
-    blockscout_params,
-    network_params,
 ):
     postgres_output = postgres.run(
         plan,
@@ -62,7 +52,6 @@ def launch_blockscout(
         extra_configs=["max_connections=1000"],
         persistent=persistent,
         node_selectors=global_node_selectors,
-        image=shared_utils.docker_cache_image_calc(docker_cache_params, POSTGRES_IMAGE),
     )
 
     el_context = el_contexts[0]
@@ -75,12 +64,10 @@ def launch_blockscout(
         global_node_selectors,
         port_publisher,
         additional_service_index,
-        docker_cache_params,
-        blockscout_params,
     )
     verif_service_name = "{}-verif".format(SERVICE_NAME_BLOCKSCOUT)
     verif_service = plan.add_service(verif_service_name, config_verif)
-    verif_url = "http://{}:{}/".format(
+    verif_url = "http://{}:{}/api".format(
         verif_service.hostname, verif_service.ports["http"].number
     )
 
@@ -92,8 +79,6 @@ def launch_blockscout(
         global_node_selectors,
         port_publisher,
         additional_service_index,
-        docker_cache_params,
-        blockscout_params,
     )
     blockscout_service = plan.add_service(SERVICE_NAME_BLOCKSCOUT, config_backend)
     plan.print(blockscout_service)
@@ -102,26 +87,10 @@ def launch_blockscout(
         blockscout_service.hostname, blockscout_service.ports["http"].number
     )
 
-    config_frontend = get_config_frontend(
-        plan,
-        el_client_rpc_url,
-        docker_cache_params,
-        blockscout_params,
-        network_params,
-        global_node_selectors,
-        blockscout_service,
-    )
-    plan.add_service(SERVICE_NAME_FRONTEND, config_frontend)
     return blockscout_url
 
 
-def get_config_verif(
-    node_selectors,
-    port_publisher,
-    additional_service_index,
-    docker_cache_params,
-    blockscout_params,
-):
+def get_config_verif(node_selectors, port_publisher, additional_service_index):
     public_ports = shared_utils.get_additional_service_standard_public_port(
         port_publisher,
         constants.HTTP_PORT_ID,
@@ -130,10 +99,7 @@ def get_config_verif(
     )
 
     return ServiceConfig(
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params,
-            blockscout_params.verif_image,
-        ),
+        image=IMAGE_NAME_BLOCKSCOUT_VERIF,
         ports=VERIF_USED_PORTS,
         public_ports=public_ports,
         env_vars={
@@ -157,8 +123,6 @@ def get_config_backend(
     node_selectors,
     port_publisher,
     additional_service_index,
-    docker_cache_params,
-    blockscout_params,
 ):
     database_url = "{protocol}://{user}:{password}@{hostname}:{port}/{database}".format(
         protocol="postgresql",
@@ -177,10 +141,7 @@ def get_config_backend(
     )
 
     return ServiceConfig(
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params,
-            blockscout_params.image,
-        ),
+        image=IMAGE_NAME_BLOCKSCOUT,
         ports=USED_PORTS,
         public_ports=public_ports,
         cmd=[
@@ -206,47 +167,6 @@ def get_config_backend(
             "API_V2_ENABLED": "true",
             "PORT": "{}".format(HTTP_PORT_NUMBER),
             "SECRET_KEY_BASE": "56NtB48ear7+wMSf0IQuWDAAazhpb31qyc7GiyspBP2vh7t5zlCsF5QDv76chXeN",
-        },
-        min_cpu=BLOCKSCOUT_MIN_CPU,
-        max_cpu=BLOCKSCOUT_MAX_CPU,
-        min_memory=BLOCKSCOUT_MIN_MEMORY,
-        max_memory=BLOCKSCOUT_MAX_MEMORY,
-        node_selectors=node_selectors,
-    )
-
-
-def get_config_frontend(
-    plan,
-    el_client_rpc_url,
-    docker_cache_params,
-    blockscout_params,
-    network_params,
-    node_selectors,
-    blockscout_service,
-):
-    return ServiceConfig(
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params,
-            blockscout_params.frontend_image,
-        ),
-        ports=FRONTEND_USED_PORTS,
-        env_vars={
-            "NEXT_PUBLIC_API_PROTOCOL": "http",
-            "NEXT_PUBLIC_API_WEBSOCKET_PROTOCOL": "ws",
-            "NEXT_PUBLIC_NETWORK_NAME": "Kurtosis",
-            "NEXT_PUBLIC_NETWORK_ID": network_params.network_id,
-            "NEXT_PUBLIC_NETWORK_RPC_URL": el_client_rpc_url,
-            "NEXT_PUBLIC_APP_HOST": "0.0.0.0",
-            "NEXT_PUBLIC_API_HOST": blockscout_service.ip_address
-            + ":"
-            + str(blockscout_service.ports["http"].number),
-            "NEXT_PUBLIC_AD_BANNER_PROVIDER": "none",
-            "NEXT_PUBLIC_AD_TEXT_PROVIDER": "none",
-            "NEXT_PUBLIC_IS_TESTNET": "true",
-            "NEXT_PUBLIC_GAS_TRACKER_ENABLED": "true",
-            "NEXT_PUBLIC_HAS_BEACON_CHAIN": "true",
-            "NEXT_PUBLIC_NETWORK_VERIFICATION_TYPE": "validation",
-            "NEXT_PUBLIC_NETWORK_ICON": "https://ethpandaops.io/logo.png",
         },
         min_cpu=BLOCKSCOUT_MIN_CPU,
         max_cpu=BLOCKSCOUT_MAX_CPU,

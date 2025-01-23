@@ -69,7 +69,6 @@ def launch_blobscan(
     global_node_selectors,
     port_publisher,
     additional_service_index,
-    docker_cache_params,
 ):
     node_selectors = global_node_selectors
     beacon_node_rpc_uri = "{0}".format(cl_contexts[0].beacon_http_url)
@@ -84,9 +83,6 @@ def launch_blobscan(
         max_memory=POSTGRES_MAX_MEMORY,
         persistent=persistent,
         node_selectors=node_selectors,
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params, "library/postgres:alpine"
-        ),
     )
 
     redis_output = redis.run(
@@ -98,9 +94,6 @@ def launch_blobscan(
         max_memory=REDIS_MAX_MEMORY,
         persistent=persistent,
         node_selectors=node_selectors,
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params, "library/redis:alpine"
-        ),
     )
 
     api_config = get_api_config(
@@ -111,7 +104,6 @@ def launch_blobscan(
         node_selectors,
         port_publisher,
         additional_service_index,
-        docker_cache_params,
     )
     blobscan_config = plan.add_service(API_SERVICE_NAME, api_config)
 
@@ -127,7 +119,6 @@ def launch_blobscan(
         node_selectors,
         port_publisher,
         additional_service_index,
-        docker_cache_params,
     )
     plan.add_service(WEB_SERVICE_NAME, web_config)
 
@@ -137,7 +128,6 @@ def launch_blobscan(
         execution_node_rpc_uri,
         network_params.network,
         node_selectors,
-        docker_cache_params,
     )
     plan.add_service(INDEXER_SERVICE_NAME, indexer_config)
 
@@ -150,7 +140,6 @@ def get_api_config(
     node_selectors,
     port_publisher,
     additional_service_index,
-    docker_cache_params,
 ):
     IMAGE_NAME = "blossomlabs/blobscan-api:latest"
 
@@ -162,10 +151,7 @@ def get_api_config(
     )
 
     return ServiceConfig(
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params,
-            IMAGE_NAME,
-        ),
+        image=IMAGE_NAME,
         ports=API_PORTS,
         public_ports=public_ports,
         env_vars={
@@ -206,7 +192,6 @@ def get_web_config(
     node_selectors,
     port_publisher,
     additional_service_index,
-    docker_cache_params,
 ):
     # TODO: https://github.com/kurtosis-tech/kurtosis/issues/1861
     # Configure NEXT_PUBLIC_BEACON_BASE_URL and NEXT_PUBLIC_EXPLORER_BASE env vars
@@ -221,10 +206,7 @@ def get_web_config(
     )
 
     return ServiceConfig(
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params,
-            IMAGE_NAME,
-        ),
+        image=IMAGE_NAME,
         ports=WEB_PORTS,
         public_ports=public_ports,
         env_vars={
@@ -249,15 +231,11 @@ def get_indexer_config(
     execution_node_rpc,
     network_name,
     node_selectors,
-    docker_cache_params,
 ):
     IMAGE_NAME = "blossomlabs/blobscan-indexer:master"
 
     return ServiceConfig(
-        image=shared_utils.docker_cache_image_calc(
-            docker_cache_params,
-            IMAGE_NAME,
-        ),
+        image=IMAGE_NAME,
         env_vars={
             "BEACON_NODE_ENDPOINT": beacon_node_rpc,
             "BLOBSCAN_API_ENDPOINT": blobscan_api_url,

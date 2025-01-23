@@ -119,11 +119,12 @@ def get_config(
         ASSERTOOR_CONFIG_FILENAME,
     )
 
-    IMAGE_NAME = assertoor_params.image
-
-    if assertoor_params.image == constants.DEFAULT_ASSERTOOR_IMAGE:
-        if network_params.fulu_fork_epoch < constants.FULU_FORK_EPOCH:
-            IMAGE_NAME = "ethpandaops/assertoor:fulu-support"
+    if assertoor_params.image != "":
+        IMAGE_NAME = assertoor_params.image
+    elif network_params.electra_fork_epoch < 100000000:
+        IMAGE_NAME = "ethpandaops/assertoor:electra-support"
+    else:
+        IMAGE_NAME = "ethpandaops/assertoor:latest"
 
     return ServiceConfig(
         image=IMAGE_NAME,

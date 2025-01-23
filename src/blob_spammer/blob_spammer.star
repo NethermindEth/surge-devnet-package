@@ -1,3 +1,4 @@
+IMAGE_NAME = "ethpandaops/tx-fuzz:master"
 SERVICE_NAME = "blob-spammer"
 
 ENTRYPOINT_ARGS = ["/bin/sh", "-c"]
@@ -18,7 +19,6 @@ def launch_blob_spammer(
     seconds_per_slot,
     genesis_delay,
     global_node_selectors,
-    tx_spammer_params,
 ):
     config = get_config(
         prefunded_addresses,
@@ -28,7 +28,6 @@ def launch_blob_spammer(
         seconds_per_slot,
         genesis_delay,
         global_node_selectors,
-        tx_spammer_params.image,
     )
     plan.add_service(SERVICE_NAME, config)
 
@@ -41,11 +40,10 @@ def get_config(
     seconds_per_slot,
     genesis_delay,
     node_selectors,
-    image,
 ):
     dencunTime = (deneb_fork_epoch * 32 * seconds_per_slot) + genesis_delay
     return ServiceConfig(
-        image=image,
+        image=IMAGE_NAME,
         entrypoint=ENTRYPOINT_ARGS,
         cmd=[
             " && ".join(
