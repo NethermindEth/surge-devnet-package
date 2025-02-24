@@ -17,6 +17,8 @@ def deploy(
         "OWNER_MULTISIG": "0x{0}0000000000000000000000000000000001".format(taiko_params.taiko_protocol_l2_network_id),
         "OWNER_MULTISIG_SIGNERS": "0x{0}0000000000000000000000000000000002,0x{0}0000000000000000000000000000000003,0x{0}0000000000000000000000000000000004".format(taiko_params.taiko_protocol_l2_network_id),
         "TIMELOCK_PERIOD": "3888000",
+        "MAX_LIVENESS_DISRUPTION_PERIOD": "604800",
+        "MIN_LIVENESS_STREAK": "3888000",
         "VERIFIER_OWNER": prefunded_account.address,
         "FOUNDRY_PROFILE": taiko_params.taiko_protocol_foundry_profile,
         "FORGE_FLAGS": "--broadcast --ffi -vv --block-gas-limit 100000000",

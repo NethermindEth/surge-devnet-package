@@ -129,15 +129,14 @@ def deploy(
     #     ),
     # )
 
-    # Deposit proposer and prover keys
+    # Deposit proposer prover key
     plan.add_service(
         name="taiko-deposit-bonds",
-        description="Depositing proposer and prover keys",
+        description="Depositing proposer prover key",
         config=ServiceConfig(
-            image="nethsurge/deposit-bonds:latest",
+            image="nethsurge/deposit-bonds:surge-devnet",
             env_vars={
-                "L1_PROPOSER_PRIVATE_KEY": prefunded_accounts[2].private_key,
-                "L1_PROVER_PRIVATE_KEY": prefunded_accounts[3].private_key,
+                "ACCOUNT_PRIVATE_KEY": prefunded_accounts[2].private_key,
                 "TAIKO_L1_CONTRACT_ADDRESS": result.taiko,
             },
             cmd=[
