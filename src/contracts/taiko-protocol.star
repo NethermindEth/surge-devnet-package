@@ -41,29 +41,29 @@ def deploy(
     # )
 
     # Deploy Taiko on L1
-    # result = taiko_on_l1.deploy(
+    result = taiko_on_l1.deploy(
+        plan,
+        taiko_params,
+        prefunded_accounts[0],
+        el_rpc_url,
+    )
+
+    # Deploy Taiko on L1
+    # result = surge_on_l1.deploy(
     #     plan,
     #     taiko_params,
     #     prefunded_accounts[0],
     #     el_rpc_url,
     # )
 
-    # Deploy Taiko on L1
-    result = surge_on_l1.deploy(
-        plan,
-        taiko_params,
-        prefunded_accounts[0],
-        el_rpc_url,
-    )
-
     # Deploy Taiko SGX SetDcapParams
-    set_dcap_params.deploy(
-        plan,
-        taiko_params,
-        prefunded_accounts[0],
-        el_rpc_url,
-        result,
-    )
+    # set_dcap_params.deploy(
+    #     plan,
+    #     taiko_params,
+    #     prefunded_accounts[0],
+    #     el_rpc_url,
+    #     result,
+    # )
 
     # Deploy Taiko SetAddress (Handled by surge on l1 now)
     # set_address.deploy(
