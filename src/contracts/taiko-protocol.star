@@ -7,6 +7,9 @@ taiko_on_l1 = import_module("./taiko-on-l1.star")
 # Taiko SetDcapParams
 set_dcap_params = import_module("./set-dcap-params.star")
 
+# Taiko SP1 SetTrustedProgramVK
+set_trusted_program_vk = import_module("./set-trusted-program-vk.star")
+
 # Taiko SetAddress
 set_address = import_module("./set-address.star")
 
@@ -58,6 +61,15 @@ def deploy(
 
     # Deploy Taiko SGX SetDcapParams
     set_dcap_params.deploy(
+        plan,
+        taiko_params,
+        prefunded_accounts[0],
+        el_rpc_url,
+        result,
+    )
+
+    # Deploy Taiko SP1 SetTrustedProgramVK
+    set_trusted_program_vk.deploy(
         plan,
         taiko_params,
         prefunded_accounts[0],

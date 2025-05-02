@@ -19,6 +19,7 @@ def deploy(
         "TIMELOCK_PERIOD": "3888000",
         "MAX_LIVENESS_DISRUPTION_PERIOD": "604800",
         "MIN_LIVENESS_STREAK": "3888000",
+        "NETWORK": "hoodi",
         "VERIFIER_OWNER": prefunded_account.address,
         "FOUNDRY_PROFILE": taiko_params.taiko_protocol_foundry_profile,
         "FORGE_FLAGS": "--broadcast --ffi -vv --block-gas-limit 100000000",

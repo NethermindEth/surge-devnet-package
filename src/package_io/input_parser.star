@@ -334,6 +334,8 @@ def input_parser(plan, input_args):
             taiko_protocol_mr_enclave=result["taiko_params"]["taiko_protocol"]["mr_enclave"],
             taiko_protocol_mr_signer=result["taiko_params"]["taiko_protocol"]["mr_signer"],
             taiko_protocol_v3_quote_bytes=result["taiko_params"]["taiko_protocol"]["v3_quote_bytes"],
+            taiko_protocol_guest_vk=result["taiko_params"]["taiko_protocol"]["guest_vk"],
+            taiko_protocol_aggregation_vk=result["taiko_params"]["taiko_protocol"]["aggregation_vk"],
             taiko_deploy_image=result["taiko_params"]["taiko_deploy_image"],
             taiko_geth_image=result["taiko_params"]["taiko_geth_image"],
             taiko_client_image=result["taiko_params"]["taiko_client_image"],
