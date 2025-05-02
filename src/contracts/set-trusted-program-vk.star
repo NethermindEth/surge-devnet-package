@@ -17,11 +17,20 @@ def deploy(
         "FORK_URL": el_rpc_url,
     }
 
-    deployment_result = plan.run_sh(
-        run = "cast send $SP1_VERIFIER 'setProgramTrusted(bytes32,bool)' $GUEST_PROOF_PROGRAM_VK true --rpc-url $FORK_URL --private-key $(PRIVATE_KEY) && cast send $SP1_VERIFIER 'setProgramTrusted(bytes32,bool)' $AGGREGATION_PROOF_PROGRAM_VK true --rpc-url $FORK_URL --private-key $PRIVATE_KEY",
-        name = "set-trusted-program-vk",
+    plan.run_sh(
+        run = "cast send $SP1_VERIFIER 'setProgramTrusted(bytes32,bool)' $GUEST_PROOF_PROGRAM_VK true --rpc-url $FORK_URL --private-key $(PRIVATE_KEY)",
+        name = "set-trusted-program-vk-1",
         image = taiko_params.taiko_protocol_image,
         env_vars = ENV_VARS,
         wait = None,
-        description = "Deploying taiko SP1 set trusted program vk",
+        description = "Deploying taiko SP1 set trusted guestprogram vk",
+    )
+
+    plan.run_sh(
+        run = "cast send $SP1_VERIFIER 'setProgramTrusted(bytes32,bool)' $AGGREGATION_PROOF_PROGRAM_VK true --rpc-url $FORK_URL --private-key $(PRIVATE_KEY)",
+        name = "set-trusted-program-vk-2",
+        image = taiko_params.taiko_protocol_image,
+        env_vars = ENV_VARS,
+        wait = None,
+        description = "Deploying taiko SP1 set trusted aggregation program vk",
     )
