@@ -60,22 +60,22 @@ def deploy(
     )
 
     # Deploy Taiko SGX SetDcapParams
-    set_dcap_params.deploy(
-        plan,
-        taiko_params,
-        prefunded_accounts[0],
-        el_rpc_url,
-        result,
-    )
+    # set_dcap_params.deploy(
+    #     plan,
+    #     taiko_params,
+    #     prefunded_accounts[0],
+    #     el_rpc_url,
+    #     result,
+    # )
 
     # Deploy Taiko SP1 SetTrustedProgramVK
-    set_trusted_program_vk.deploy(
-        plan,
-        taiko_params,
-        prefunded_accounts[0],
-        el_rpc_url,
-        result,
-    )
+    # set_trusted_program_vk.deploy(
+    #     plan,
+    #     taiko_params,
+    #     prefunded_accounts[0],
+    #     el_rpc_url,
+    #     result,
+    # )
 
     # Deploy Taiko SetAddress (Handled by surge on l1 now)
     # set_address.deploy(
@@ -159,3 +159,5 @@ def deploy(
             ],
         ),
     )
+
+    return result

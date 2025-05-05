@@ -212,7 +212,7 @@ def run(plan, args={}):
 
     if "taiko" in args_with_right_defaults.additional_services:
         taiko_params = args_with_right_defaults.taiko_params
-        taiko_protocol.deploy(
+        taiko_result = taiko_protocol.deploy(
             plan,
             taiko_params,
             prefunded_accounts, # L1 Prefunded Accounts
@@ -671,20 +671,11 @@ def run(plan, args={}):
 
         elif additional_service == "taiko_stack":
 
-            plan.print("Launching taiko")
-            # plan.upload_files(
-            #     src="./taiko-geth",
-            #     name="taiko_genesis",
-            # )
+            plan.print("Launching l2")
 
-            l2_jwt = plan.upload_files(
-                src=static_files.L2_JWT_PATH,
-                name="l2_jwt_files",
-            )
-
-            taiko_files = plan.upload_files(
-                src=static_files.TAIKO_PATH,
-                name="taiko_files",
+            l2_files = plan.upload_files(
+                src=static_files.L2_PATH,
+                name="l2_files",
             )
 
             # Launch taiko stack 1
@@ -693,6 +684,7 @@ def run(plan, args={}):
                 all_el_contexts[0],
                 all_cl_contexts[0],
                 prefunded_accounts,
+                taiko_result,
                 "",
                 0,
             )
@@ -703,6 +695,7 @@ def run(plan, args={}):
                 all_el_contexts[0],
                 all_cl_contexts[0],
                 prefunded_accounts,
+                taiko_result,
                 taiko_stack_1.enode,
                 1,
             )

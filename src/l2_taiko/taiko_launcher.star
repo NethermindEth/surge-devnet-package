@@ -12,6 +12,7 @@ def launch(
     el_context,
     cl_context,
     prefunded_accounts,
+    taiko_result,
     enode,
     index,
 ):
@@ -43,6 +44,7 @@ def launch(
         cl_context,
         el,
         index,
+        taiko_result,
     )
 
     # Launch prover
@@ -55,6 +57,7 @@ def launch(
         el,
         prefunded_accounts,
         index,
+        taiko_result,
     )
 
     # Launch proposer
@@ -67,6 +70,7 @@ def launch(
         el,
         prefunded_accounts,
         index,
+        taiko_result,
     )
 
     return struct(

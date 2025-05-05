@@ -9,15 +9,16 @@ def launch(
     geth,
     prefunded_accounts,
     index,
+    taiko_result,
 ):
     jwtsecret_file = "/tmp/jwt/jwtsecret"
     service = plan.add_service(
-        name = "preconf-taiko-prover-{0}".format(index),
+        name = "surge-taiko-prover-{0}".format(index),
         config = ServiceConfig(
             image = "nethsurge/taiko-client:latest",
             files = {
-                "/data/taiko-geth": "taiko_files",
-                "/tmp/jwt": "l2_jwt_files",
+                "/data/l2_nethermind": "l2_files",
+                "/tmp/jwt": "l2_files",
             },
             entrypoint = ["taiko-client"],
             cmd = [
@@ -25,13 +26,27 @@ def launch(
                 "--l1.ws={0}".format(el_context.ws_url),
                 "--l2.http={0}".format(geth.rpc_http_url),
                 "--l2.ws={0}".format(geth.ws_url),
-                "--taikoL1=0xaE37C7A711bcab9B0f8655a97B738d6ccaB6560B",
-                "--taikoL2=0x1670000000000000000000000000000000010001",
-                # "--jwtSecret={0}".format(jwtsecret_path),
-                # "--taikoToken=0x8F0342A7060e76dfc7F6e9dEbfAD9b9eC919952c",
+                "--taikoL1={0}".format(taiko_result.taiko),
+                "--taikoL2=0x7633740000000000000000000000000000010001",
                 "--l1.proverPrivKey={0}".format(prefunded_accounts[3].private_key),
                 "--prover.capacity=1",
-                # "--raiko.host="
+                "--sgxVerifier={0}".format(taiko_result.tier_sgx),
+                "--sp1Verifier={0}".format(taiko_result.tier_sp1),
+                "--risc0Verifier={0}".format(taiko_result.tier_risc0),
+                "--raiko.host={0}".format(taiko_result.raiko),
+                "--raiko.host.zkvm={0}".format(taiko_result.tier_zkvm_risc0),
+                "--raiko.requestTimeout=120s",
+                "--raiko.sp1Recursion=plonk",
+                "--raiko.sp1Prover=local",
+                "--raiko.risc0Bonsai=false",
+                "--raiko.risc0Snark=true",
+                "--raiko.risc0Profile=false",
+                "--raiko.risc0ExecutionPo2=20",
+                "--tx.gasLimit=1000000",
+                "--tx.notInMempoolTimeout=30s",
+                "--tx.resubmissionTimeout=10s",
+                "--prover.blockConfirmations=32",
+                "--metrics true",
             ],
         ),
     )

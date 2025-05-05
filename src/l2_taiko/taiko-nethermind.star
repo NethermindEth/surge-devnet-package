@@ -6,10 +6,9 @@ DISCOVERY_PORT_NUM = 30303
 ENGINE_RPC_PORT_NUM = 8552
 METRICS_PORT_NUM = 8018
 
-GENESIS_HASH = "0xb0d3df0b42c7f41100b85fef8454dd29c4d6d6f7d1eda963b3839a0ebaa168cd"
+GENESIS_HASH = "0x5b5ed0c10625de4c92c913c1751b819fece6d132fe47662c86d541e276b99568"
 # ENABLED_MODULES = "debug,eth,net,web3,txpool,rpc,subscribe,trace,personal,proof,parity,health"
 LOG_LEVEL = "debug"
-# BOOT_NODES = "enode://2f7ee605f84362671e7d7c6d47b69a3358b0d87e9ba4648befcae8b19453275ed19059db347c459384c1a3e5486419233c06bf6c4c6f489d81ace6f301a2a446@43.153.55.134:30303,enode://c067356146268d2855ad356c1ce36ba9f78c1633a72f9b7f686679c2ffe04bab6d24e48ef6eefb0e01aa00dff5024f7f94bc583da90b6027f40be4129bbbc5fd@43.153.90.191:30303,enode://acc2bdb6416feddff9734bee1e6de91e684e9df5aeb1d36698cc78b920600aed36a2871e4ad0cf4521afcdc2cde8e2cd410a57038767c356d4ce6c69b9107a5a@170.106.109.12:30303,enode://eb5079aae185d5d8afa01bfd2d349da5b476609aced2b57c90142556cf0ee4a152bcdd724627a7de97adfc2a68af5742a8f58781366e6a857d4bde98de6fe986@34.66.210.65:30303,enode://2294f526cbb7faa778192289c252307420532191438ce821d3c50232e019a797bda8c8f8541de0847e953bb03096123856935e32294de9814d15d120131499ba@34.72.186.213:30303"
 
 # The min/max CPU/memory that the execution node can use
 EXECUTION_MIN_CPU = 100
@@ -24,12 +23,12 @@ def launch(
     index,
 ):
     service = plan.add_service(
-        name = "preconf-taiko-nethermind-{0}".format(index),
+        name = "surge-nethermind-{0}".format(index),
         config = ServiceConfig(
-            image = "nethermindeth/nethermind:surge-47feb43",
+            image = "nethermindeth/nethermind:master-fd56a42",
             files = {
-                "/data/taiko-geth": "taiko_files",
-                "/tmp/jwt": "l2_jwt_files",
+                "/data/l2_nethermind": "l2_files",
+                "/tmp/jwt": "l2_files",
             },
             ports = {
                 "metrics": PortSpec(
@@ -53,8 +52,8 @@ def launch(
             },
             cmd = [
                 "--config=none",
-                "--datadir=/data/taiko-geth",
-                "--Init.ChainSpecPath=/data/taiko-geth/chainspec.json",
+                "--datadir=/data/l2_nethermind",
+                "--Init.ChainSpecPath=/data/l2_nethermind/chainspec.json",
                 "--Init.GenesisHash={0}".format(GENESIS_HASH),
                 "--Init.DiscoveryEnabled=false",
                 "--Metrics.Enabled=true",
@@ -102,7 +101,7 @@ def launch(
     # )
 
     return struct(
-        client_name="taiko-nethermind",
+        client_name="surge-nethermind",
         ip_addr=service.ip_address,
         rpc_port_num=RPC_PORT_NUM,
         ws_port_num=WS_PORT_NUM,
