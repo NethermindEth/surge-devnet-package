@@ -114,7 +114,7 @@ parallel_keystore_generation: false
 disable_peer_scoring: false
 grafana_additional_dashboards: []
 persistent: false
-mev_type: flashbots
+mev_type: null
 mev_params:
   mev_relay_image: ghcr.io/chainbound/bolt-relay:v0.2.1-alpha
   mev_builder_image: ghcr.io/chainbound/bolt-builder:v0.2.1-alpha
